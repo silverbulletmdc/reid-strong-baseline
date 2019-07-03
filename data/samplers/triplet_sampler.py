@@ -156,15 +156,16 @@ class SimilarIdentitySampler(Sampler):
                     batch_idxs_dict[pid].append(batch_idxs)
                     batch_idxs = []
 
-
         avai_pids = copy.deepcopy(self.pids)
         final_idxs = []
 
         while len(avai_pids) >= self.num_pids_per_batch:
             selected_pid = random.sample(avai_pids, 1)
-            similarity = self.similarity_matrix[selected_pid]
-
-            np.random.multinomial()
+            similarity = self.similarity_matrix[selected_pid, avai_pids]
+            similarity /= np.sum(similarity)
+            selected_pids = np.random.choice(avai_pids, self.num_pids_per_batch - 1, False, p=similarity)
+            selected_pids = list(selected_pids)
+            selected_pid.insert(0, selected_pid)
             for pid in selected_pids:
                 batch_idxs = batch_idxs_dict[pid].pop(0)
                 final_idxs.extend(batch_idxs)
@@ -175,16 +176,20 @@ class SimilarIdentitySampler(Sampler):
         return iter(final_idxs)
 
 
+def test_similarity_sampler():
+    """
+    只能保证运行时不出错,不验证正确性.
 
-
-
-
-
-
-
-
-
-
-
-
-
+    :return:
+    """
+    pids = list(range(100))
+    path = "aaa"
+    image_id = 1
+    data_source = [(path, pid, image_id) for pid in np.random.choice(pids, 10000)]
+    batch_size = 64
+    num_instances = 16
+    similarity_matrix = np.random.rand(100, 100)
+    similarity_matrix[np.eye(100, dtype=bool)] = 0
+    sampler = SimilarIdentitySampler(data_source, batch_size, num_instances, similarity_matrix)
+    for idx in sampler:
+        pass
