@@ -7,7 +7,7 @@ import logging
 
 import torch
 import torch.nn as nn
-from ignite.engine import Engine
+from ignite.engine import Engine, Events
 
 from utils.reid_metric import R1_mAP, R1_mAP_reranking
 
@@ -33,10 +33,10 @@ def create_supervised_evaluator(model, metrics,
     def _inference(engine, batch):
         model.eval()
         with torch.no_grad():
-            data, pids, camids = batch
+            data, pids, camids, paths = batch
             data = data.to(device) if torch.cuda.device_count() >= 1 else data
             feat = model(data)
-            return feat, pids, camids
+            return feat, pids, camids, paths
 
     engine = Engine(_inference)
 
@@ -66,6 +66,14 @@ def inference(
                                                 device=device)
     else:
         print("Unsupported re_ranking config. Only support for no or yes, but got {}.".format(cfg.TEST.RE_RANKING))
+
+    @evaluator.on(Events.ITERATION_COMPLETED)
+    def update(evaluator):
+        print(evaluator.state.output)
+
+    @evaluator.on(Events.EPOCH_COMPLETED)
+    def calc_heatmap(engine):
+        pass
 
     evaluator.run(val_loader)
     cmc, mAP = evaluator.state.metrics['r1_mAP']

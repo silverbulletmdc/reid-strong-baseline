@@ -4,10 +4,17 @@
 @contact: sherlockliao01@gmail.com
 """
 
+import numpy as np
 import os.path as osp
 from PIL import Image
 from torch.utils.data import Dataset
-
+try:
+    import nori2 as nori
+    nf = nori.Fetcher()
+    import cv2
+    use_nori = True
+except ImportError as e:
+    use_nori = False
 
 def read_image(img_path):
     """Keep reading image until succeed.
@@ -24,6 +31,11 @@ def read_image(img_path):
             pass
     return img
 
+def read_nori_image(nori_id):
+    png = nf.get(nori_id)
+    img = cv2.imdecode(np.fromstring(png, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+    return Image.fromarray(img)
+
 
 class ImageDataset(Dataset):
     """Image Person ReID Dataset"""
@@ -37,7 +49,10 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, index):
         img_path, pid, camid = self.dataset[index]
-        img = read_image(img_path)
+        if use_nori:
+            img = read_nori_image(img_path)
+        else:
+            img = read_image(img_path)
 
         if self.transform is not None:
             img = self.transform(img)

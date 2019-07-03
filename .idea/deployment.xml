@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="demo.mengdechao.ws2@hh-b.brainpp.cn:22">
+    <serverData>
+      <paths name="demo.mengdechao.ws2@hh-b.brainpp.cn:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/mengdechao/pycharm_remote/reid-strong-baseline" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/post_process/imgs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/train_output" />
+            <excludedPath local="true" path="$PROJECT_DIR$/veri776_train_output" />
+            <excludedPath local="true" path="$PROJECT_DIR$/distmat.npy" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

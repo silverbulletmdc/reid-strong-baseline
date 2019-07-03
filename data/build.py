@@ -12,7 +12,13 @@ from .samplers import RandomIdentitySampler, RandomIdentitySampler_alignedreid  
 from .transforms import build_transforms
 
 
-def make_data_loader(cfg):
+def make_data_loader(cfg, get_demo_dataset=False):
+    """
+
+    :param cfg:
+    :param get_demo_dataset: If true, return query and gallery dataloaders individually.
+    :return:
+    """
     train_transforms = build_transforms(cfg, is_train=True)
     val_transforms = build_transforms(cfg, is_train=False)
     num_workers = cfg.DATALOADER.NUM_WORKERS
@@ -42,4 +48,17 @@ def make_data_loader(cfg):
         val_set, batch_size=cfg.TEST.IMS_PER_BATCH, shuffle=False, num_workers=num_workers,
         collate_fn=val_collate_fn
     )
+    if get_demo_dataset:
+        query_set = ImageDataset(dataset.query, val_transforms)
+        gallery_set = ImageDataset(dataset.gallery, val_transforms)
+        query_loader = DataLoader(
+            query_set, batch_size=cfg.TEST.IMS_PER_BATCH, shuffle=False, num_workers=num_workers,
+            collate_fn=val_collate_fn
+        )
+        gallery_loader = DataLoader(
+            gallery_set, batch_size=cfg.TEST.IMS_PER_BATCH, shuffle=False, num_workers=num_workers,
+            collate_fn=val_collate_fn
+        )
+        return query_loader, gallery_loader, num_classes
+
     return train_loader, val_loader, len(dataset.query), num_classes

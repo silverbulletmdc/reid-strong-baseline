@@ -14,7 +14,7 @@ def build_transforms(cfg, is_train=True):
     if is_train:
         transform = T.Compose([
             T.Resize(cfg.INPUT.SIZE_TRAIN),
-            T.RandomHorizontalFlip(p=cfg.INPUT.PROB),
+            # T.RandomHorizontalFlip(p=cfg.INPUT.PROB),
             T.Pad(cfg.INPUT.PADDING),
             T.RandomCrop(cfg.INPUT.SIZE_TRAIN),
             T.ToTensor(),

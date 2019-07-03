@@ -17,6 +17,7 @@ from utils.reid_metric import R1_mAP
 global ITER
 ITER = 0
 
+
 def create_supervised_trainer(model, optimizer, loss_fn,
                               device=None):
     """
@@ -54,8 +55,8 @@ def create_supervised_trainer(model, optimizer, loss_fn,
     return Engine(_update)
 
 
-def create_supervised_trainer_with_center(model, center_criterion, optimizer, optimizer_center, loss_fn, cetner_loss_weight,
-                              device=None):
+def create_supervised_trainer_with_center(model, center_criterion, optimizer, optimizer_center, loss_fn,
+                                          cetner_loss_weight, device=None):
     """
     Factory function for creating a trainer for supervised models
 
@@ -118,10 +119,10 @@ def create_supervised_evaluator(model, metrics,
     def _inference(engine, batch):
         model.eval()
         with torch.no_grad():
-            data, pids, camids = batch
+            data, pids, camids, paths = batch
             data = data.to(device) if torch.cuda.device_count() >= 1 else data
             feat = model(data)
-            return feat, pids, camids
+            return feat, pids, camids, paths
 
     engine = Engine(_inference)
 
@@ -152,12 +153,15 @@ def do_train(
     logger = logging.getLogger("reid_baseline.train")
     logger.info("Start training")
     trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)
-    evaluator = create_supervised_evaluator(model, metrics={'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
+    evaluator = create_supervised_evaluator(model, metrics={
+        'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
     checkpointer = ModelCheckpoint(output_dir, cfg.MODEL.NAME, checkpoint_period, n_saved=10, require_empty=False)
     timer = Timer(average=True)
 
-    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model.state_dict(),
-                                                                     'optimizer': optimizer.state_dict()})
+    #    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model.state_dict(),
+    #                                                                     'optimizer': optimizer.state_dict()})
+    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model,
+                                                                     'optimizer': optimizer})
     timer.attach(trainer, start=Events.EPOCH_STARTED, resume=Events.ITERATION_STARTED,
                  pause=Events.ITERATION_COMPLETED, step=Events.ITERATION_COMPLETED)
 
@@ -230,14 +234,20 @@ def do_train_with_center(
 
     logger = logging.getLogger("reid_baseline.train")
     logger.info("Start training")
-    trainer = create_supervised_trainer_with_center(model, center_criterion, optimizer, optimizer_center, loss_fn, cfg.SOLVER.CENTER_LOSS_WEIGHT, device=device)
-    evaluator = create_supervised_evaluator(model, metrics={'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
+    trainer = create_supervised_trainer_with_center(model, center_criterion, optimizer, optimizer_center, loss_fn,
+                                                    cfg.SOLVER.CENTER_LOSS_WEIGHT, device=device)
+    evaluator = create_supervised_evaluator(model, metrics={
+        'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)}, device=device)
     checkpointer = ModelCheckpoint(output_dir, cfg.MODEL.NAME, checkpoint_period, n_saved=10, require_empty=False)
     timer = Timer(average=True)
 
-    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model.state_dict(),
-                                                                     'optimizer': optimizer.state_dict(),
-                                                                     'optimizer_center': optimizer_center.state_dict()})
+    # trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model.state_dict(),
+    #                                                                 'optimizer': optimizer.state_dict(),
+    #                                                                 'optimizer_center': optimizer_center.state_dict()})
+    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpointer, {'model': model,
+                                                                     'optimizer': optimizer,
+                                                                     'centerloss': center_criterion,
+                                                                     'optimizer_center': optimizer_center})
 
     timer.attach(trainer, start=Events.EPOCH_STARTED, resume=Events.ITERATION_STARTED,
                  pause=Events.ITERATION_COMPLETED, step=Events.ITERATION_COMPLETED)

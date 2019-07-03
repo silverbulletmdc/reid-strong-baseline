@@ -4,7 +4,6 @@ data/dukemtmc-reid
 log/
 saved-models/
 train_imagenet.py
-.idea/
 
 # OS X
 .DS_Store

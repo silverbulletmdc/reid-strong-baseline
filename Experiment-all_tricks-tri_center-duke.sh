@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Experiment all tricks with center loss : 256x128-bs16x4-warmup10-erase0_5-labelsmooth_on-laststride1-bnneck_on-triplet_centerloss0_0005
 # Dataset 2: dukemtmc
 # imagesize: 256x128

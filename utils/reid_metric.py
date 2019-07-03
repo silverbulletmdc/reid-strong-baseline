@@ -4,8 +4,10 @@
 @contact: sherlockliao01@gmail.com
 """
 
+import pickle
 import numpy as np
 import torch
+import torch.nn.functional
 from ignite.metrics import Metric
 
 from data.datasets.eval_reid import eval_func
@@ -19,16 +21,19 @@ class R1_mAP(Metric):
         self.max_rank = max_rank
         self.feat_norm = feat_norm
 
+
     def reset(self):
         self.feats = []
         self.pids = []
         self.camids = []
+        self.paths = []
 
     def update(self, output):
-        feat, pid, camid = output
+        feat, pid, camid, paths = output
         self.feats.append(feat)
         self.pids.extend(np.asarray(pid))
         self.camids.extend(np.asarray(camid))
+        self.paths += paths
 
     def compute(self):
         feats = torch.cat(self.feats, dim=0)
@@ -48,6 +53,21 @@ class R1_mAP(Metric):
                   torch.pow(gf, 2).sum(dim=1, keepdim=True).expand(n, m).t()
         distmat.addmm_(1, -2, qf, gf.t())
         distmat = distmat.cpu().numpy()
+
+        # 保存结果
+        query_paths = self.paths[:self.num_query]
+        gallery_paths = self.paths[self.num_query:]
+        with open('output.pkl', 'wb') as f:
+            pickle.dump({
+                'gallery_paths': gallery_paths,
+                'query_paths': query_paths,
+                'gallery_ids': g_pids,
+                'query_ids': q_pids,
+                'query_cams': q_camids,
+                'gallery_cams': g_camids,
+                'distmat': distmat
+            }, f)
+
         cmc, mAP = eval_func(distmat, q_pids, g_pids, q_camids, g_camids)
 
         return cmc, mAP
@@ -66,7 +86,7 @@ class R1_mAP_reranking(Metric):
         self.camids = []
 
     def update(self, output):
-        feat, pid, camid = output
+        feat, pid, camid, _ = output
         self.feats.append(feat)
         self.pids.extend(np.asarray(pid))
         self.camids.extend(np.asarray(camid))
