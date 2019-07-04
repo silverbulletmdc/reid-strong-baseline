@@ -122,6 +122,7 @@ class SimilarIdentitySampler(Sampler):
         :param num_instances:
         :param np.ndarray similarity_matrix: 相似度矩阵。(i, j)代表两个id之间的相似度。
         """
+
         super(SimilarIdentitySampler, self).__init__(data_source)
         self.data_source = data_source
         self.num_instances = num_instances
@@ -166,6 +167,14 @@ class SimilarIdentitySampler(Sampler):
             selected_pid = random.sample(avai_pids, 1)[0]
             similarity = self.similarity_matrix[selected_pid, avai_pids]
             similarity /= np.sum(similarity)
+
+            ################################################################################
+            # Sample only from top-k similarity.
+            order = np.argsort(similarity)
+            p = np.zeros_like(similarity)
+            p[order[-(self.num_pids_per_batch-1):]] = 1 / (self.num_pids_per_batch - 1)
+            ################################################################################
+
             selected_pids = np.random.choice(avai_pids, self.num_pids_per_batch - 1, False, p=similarity)
             selected_pids = list(selected_pids)
             selected_pids.insert(0, selected_pid)
