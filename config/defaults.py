@@ -19,6 +19,7 @@ models.resnet50(pretrained=True)
 
 _C = CN()
 
+_C.USE_GPU = True
 _C.MODEL = CN()
 # Using cuda or cpu for training
 _C.MODEL.DEVICE = "cuda"

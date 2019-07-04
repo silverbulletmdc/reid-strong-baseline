@@ -70,10 +70,10 @@ def make_loss_with_center(cfg, num_classes):    # modified by gu
         feat_dim = 2048
 
     if cfg.MODEL.METRIC_LOSS_TYPE == 'center':
-        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=True)  # center loss
+        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=cfg.USE_GPU)  # center loss
 
     elif cfg.MODEL.METRIC_LOSS_TYPE == 'range_center':
-        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=True)  # center_range loss
+        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=cfg.USE_GPU)  # center_range loss
         range_criterion = RangeLoss(k=cfg.SOLVER.RANGE_K, margin=cfg.SOLVER.RANGE_MARGIN, alpha=cfg.SOLVER.RANGE_ALPHA,
                                     beta=cfg.SOLVER.RANGE_BETA, ordered=True, use_gpu=True,
                                     ids_per_batch=cfg.SOLVER.IMS_PER_BATCH // cfg.DATALOADER.NUM_INSTANCE,
@@ -81,13 +81,13 @@ def make_loss_with_center(cfg, num_classes):    # modified by gu
 
     elif cfg.MODEL.METRIC_LOSS_TYPE == 'triplet_center':
         triplet = TripletLoss(cfg.SOLVER.MARGIN)  # triplet loss
-        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=True)  # center loss
+        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=cfg.USE_GPU)  # center loss
 
     elif cfg.MODEL.METRIC_LOSS_TYPE == 'triplet_range_center':
         triplet = TripletLoss(cfg.SOLVER.MARGIN)  # triplet loss
-        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=True)  # center_range loss
+        center_criterion = CenterLoss(num_classes=num_classes, feat_dim=feat_dim, use_gpu=cfg.USE_GPU)  # center_range loss
         range_criterion = RangeLoss(k=cfg.SOLVER.RANGE_K, margin=cfg.SOLVER.RANGE_MARGIN, alpha=cfg.SOLVER.RANGE_ALPHA,
-                                    beta=cfg.SOLVER.RANGE_BETA, ordered=True, use_gpu=True,
+                                    beta=cfg.SOLVER.RANGE_BETA, ordered=True, use_gpu=cfg.USE_GPU,
                                     ids_per_batch=cfg.SOLVER.IMS_PER_BATCH // cfg.DATALOADER.NUM_INSTANCE,
                                     imgs_per_id=cfg.DATALOADER.NUM_INSTANCE)
     else:

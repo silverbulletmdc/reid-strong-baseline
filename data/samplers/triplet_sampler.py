@@ -163,19 +163,21 @@ class SimilarIdentitySampler(Sampler):
         final_idxs = []
 
         while len(avai_pids) >= self.num_pids_per_batch:
-            selected_pid = random.sample(avai_pids, 1)
+            selected_pid = random.sample(avai_pids, 1)[0]
             similarity = self.similarity_matrix[selected_pid, avai_pids]
             similarity /= np.sum(similarity)
             selected_pids = np.random.choice(avai_pids, self.num_pids_per_batch - 1, False, p=similarity)
             selected_pids = list(selected_pids)
-            selected_pid.insert(0, selected_pid)
+            selected_pids.insert(0, selected_pid)
+            assert len(selected_pids) == self.num_pids_per_batch
             for pid in selected_pids:
                 batch_idxs = batch_idxs_dict[pid].pop(0)
+                assert len(batch_idxs) == self.num_instances
                 final_idxs.extend(batch_idxs)
                 if len(batch_idxs_dict[pid]) == 0:
                     avai_pids.remove(pid)
 
-        # self.length = len(final_idxs)
+        self.length = len(final_idxs)
         return iter(final_idxs)
 
     def __len__(self):
