@@ -120,12 +120,15 @@ class SimilarIdentitySampler(Sampler):
 
         :param list data_source: (path, pid, image_id)
         :param num_instances:
-        :param similarity_matrix: 相似度矩阵。(i, j)代表两个id之间的相似度。
+        :param np.ndarray similarity_matrix: 相似度矩阵。(i, j)代表两个id之间的相似度。
         """
         super(SimilarIdentitySampler, self).__init__(data_source)
         self.data_source = data_source
         self.num_instances = num_instances
+        num_ids = similarity_matrix.shape[0]
+        similarity_matrix[np.eye(num_ids, dtype=bool)] = 0
         self.similarity_matrix = similarity_matrix
+
         self.index_dic = defaultdict(list)
         self.batch_size = batch_size
         self.num_pids_per_batch = self.batch_size // self.num_instances
@@ -172,8 +175,11 @@ class SimilarIdentitySampler(Sampler):
                 if len(batch_idxs_dict[pid]) == 0:
                     avai_pids.remove(pid)
 
-        self.length = len(final_idxs)
+        # self.length = len(final_idxs)
         return iter(final_idxs)
+
+    def __len__(self):
+        return self.length
 
 
 def test_similarity_sampler():
@@ -184,12 +190,15 @@ def test_similarity_sampler():
     """
     pids = list(range(100))
     path = "aaa"
-    image_id = 1
-    data_source = [(path, pid, image_id) for pid in np.random.choice(pids, 10000)]
+    data_source = [(path, pid, idx) for idx, pid in enumerate(np.random.choice(pids, 10000))]
     batch_size = 64
     num_instances = 16
     similarity_matrix = np.random.rand(100, 100)
-    similarity_matrix[np.eye(100, dtype=bool)] = 0
     sampler = SimilarIdentitySampler(data_source, batch_size, num_instances, similarity_matrix)
-    for idx in sampler:
-        pass
+    random_sampler = RandomIdentitySampler(data_source, batch_size, num_instances)
+    print("bbb")
+    print(len(sampler))
+    print(len(random_sampler))
+    print("aaa")
+    for idx1, idx2 in zip(sampler, random_sampler):
+        print(data_source[idx1])

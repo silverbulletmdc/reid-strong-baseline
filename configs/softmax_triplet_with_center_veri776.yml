@@ -19,6 +19,7 @@ DATASETS:
   NAMES: ('veri776')
   ROOT_DIR: '/home/dechao/disk1/datasets/VeRi'
 
+
 DATALOADER:
   SAMPLER: 'softmax_triplet'
   NUM_INSTANCE: 4

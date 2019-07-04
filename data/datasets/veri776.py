@@ -11,6 +11,7 @@ import os.path as osp
 
 try:
     import nori2 as nori
+
     use_nori = True
 except ImportError:
     use_nori = False
@@ -112,17 +113,13 @@ class VeRi776Nori(BaseImageDataset):
         self.query_dir = osp.join(self.dataset_dir, 'image_query.nori')
         self.gallery_dir = osp.join(self.dataset_dir, 'image_test.nori')
 
-        train = self._process_dir(self.train_dir, relabel=True)
-        query = self._process_dir(self.query_dir, relabel=False)
-        gallery = self._process_dir(self.gallery_dir, relabel=False)
+        self.train, self.train_label2pid, self.train_pid2label = self._process_dir(self.train_dir, relabel=True)
+        self.query, self.query_label2pid, self.query_pid2label = self._process_dir(self.query_dir, relabel=False)
+        self.gallery, self.gallery_label2pid, self.gallery_pid2label = self._process_dir(self.gallery_dir, relabel=False)
 
         if verbose:
             print("=> VeRi776 loaded")
-            self.print_dataset_statistics(train, query, gallery)
-
-        self.train = train
-        self.query = query
-        self.gallery = gallery
+            self.print_dataset_statistics(self.train, self.query, self.gallery)
 
         self.num_train_pids, self.num_train_imgs, self.num_train_cams = self.get_imagedata_info(self.train)
         self.num_query_pids, self.num_query_imgs, self.num_query_cams = self.get_imagedata_info(self.query)
@@ -146,6 +143,7 @@ class VeRi776Nori(BaseImageDataset):
             if pid == -1: continue  # junk images are just ignored
             pid_container.add(pid)
         pid2label = {pid: label for label, pid in enumerate(pid_container)}
+        label2pid = {label: pid for pid, label in pid2label.items()}
 
         dataset = []
         for nid, img_path in zip(nids, img_paths):
@@ -157,7 +155,8 @@ class VeRi776Nori(BaseImageDataset):
             if relabel: pid = pid2label[pid]
             dataset.append((nid, pid, camid))
 
-        return dataset
+        return dataset, label2pid, pid2label
+
 
 if use_nori:
     veri776 = VeRi776Nori

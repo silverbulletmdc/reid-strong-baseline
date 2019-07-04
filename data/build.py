@@ -4,11 +4,12 @@
 @contact: sherlockliao01@gmail.com
 """
 
+import torch
 from torch.utils.data import DataLoader
 
 from .collate_batch import train_collate_fn, val_collate_fn
 from .datasets import init_dataset, ImageDataset
-from .samplers import RandomIdentitySampler, RandomIdentitySampler_alignedreid  # New add by gu
+from .samplers import RandomIdentitySampler, RandomIdentitySampler_alignedreid, SimilarIdentitySampler  # New add by gu
 from .transforms import build_transforms
 
 
@@ -36,12 +37,15 @@ def make_data_loader(cfg, get_demo_dataset=False):
             collate_fn=train_collate_fn
         )
     else:
+        sim_mat = torch.load('exp/sim_mat.pth').numpy()
         train_loader = DataLoader(
             train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
-            sampler=RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE),
+            sampler=SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat),
+            # sampler=RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE),
             # sampler=RandomIdentitySampler_alignedreid(dataset.train, cfg.DATALOADER.NUM_INSTANCE),      # new add by gu
             num_workers=num_workers, collate_fn=train_collate_fn
         )
+        print(len(train_loader.sampler))
 
     val_set = ImageDataset(dataset.query + dataset.gallery, val_transforms)
     val_loader = DataLoader(

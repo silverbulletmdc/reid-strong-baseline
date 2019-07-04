@@ -2,8 +2,8 @@ import torch
 from pprint import pprint
 
 centerloss_checkout_ckpt = torch.load('../veri776_train_output/resnet50_centerloss_120.pth', map_location='cpu')
-pprint(centerloss_checkout_ckpt)
 center_vecs = centerloss_checkout_ckpt['centers'] # 576, 2048
+center_vecs -= torch.mean(center_vecs, dim=0)
 lengths =  torch.sum(center_vecs**2, dim=1).view(-1, 1)**0.5
 normalized_center_vecs = center_vecs / lengths
 cos_similarity_matrixs = torch.mm(normalized_center_vecs, center_vecs.transpose(0, 1))
@@ -23,8 +23,5 @@ xy_intersection = torch.mm(center_vecs, center_vecs.t())
 dist = xy_intersection/(x_norm * y_norm)
 dist = (1. - dist) / 2
 
-print(distance_matrix)
-print(similarity_matrixs.shape)
-print(distance_matrix[0])
-print(distmat[0])
-print(dist[0])
+print(cos_similarity_matrixs[0])
+

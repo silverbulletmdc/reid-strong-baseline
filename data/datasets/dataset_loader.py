@@ -8,13 +8,17 @@ import numpy as np
 import os.path as osp
 from PIL import Image
 from torch.utils.data import Dataset
+
 try:
     import nori2 as nori
+
     nf = nori.Fetcher()
     import cv2
+
     use_nori = True
 except ImportError as e:
     use_nori = False
+
 
 def read_image(img_path):
     """Keep reading image until succeed.
@@ -30,6 +34,7 @@ def read_image(img_path):
             print("IOError incurred when reading '{}'. Will redo. Don't worry. Just chill.".format(img_path))
             pass
     return img
+
 
 def read_nori_image(nori_id):
     png = nf.get(nori_id)
