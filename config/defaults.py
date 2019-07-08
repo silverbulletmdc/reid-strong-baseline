@@ -1,8 +1,4 @@
 from yacs.config import CfgNode as CN
-from torchvision import models
-
-models.resnet50(pretrained=True)
-
 # -----------------------------------------------------------------------------
 # Convention about Training / Test specific parameters
 # -----------------------------------------------------------------------------
@@ -19,7 +15,6 @@ models.resnet50(pretrained=True)
 
 _C = CN()
 
-_C.USE_GPU = True
 _C.MODEL = CN()
 # Using cuda or cpu for training
 _C.MODEL.DEVICE = "cuda"
@@ -163,3 +158,9 @@ _C.TEST.FEAT_NORM = 'yes'
 # ---------------------------------------------------------------------------- #
 # Path to checkpoint and saved log of trained model
 _C.OUTPUT_DIR = ""
+
+# ---------------------------------------------------------------------------- #
+# Attention transductive
+# ---------------------------------------------------------------------------- #
+# Path to checkpoint and saved log of trained model
+

@@ -147,7 +147,8 @@ def main():
             heatmap = np.concatenate((query_heatmap, gallery_heatmap), axis=1)
 
             plt.imshow(heatmap)
-            plt.savefig('heatmaps/{}/{}_{}_{}_{}.png'.format(args.id, distances[i].item(), i, camids[i], pids[i]==pid))
+            plt.savefig(
+                'heatmaps/{}/{}_{}_{}_{}.png'.format(args.id, distances[i].item(), i, camids[i], pids[i] == pid))
 
 
 if __name__ == '__main__':

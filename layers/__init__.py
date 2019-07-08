@@ -96,7 +96,7 @@ def make_loss_with_center(cfg, num_classes):    # modified by gu
               'but got {}'.format(cfg.MODEL.METRIC_LOSS_TYPE))
 
     if cfg.MODEL.IF_LABELSMOOTH == 'on':
-        xent = CrossEntropyLabelSmooth(num_classes=num_classes)     # new add by luo
+        xent = CrossEntropyLabelSmooth(num_classes=num_classes, use_gpu=cfg.USE_GPU)     # new add by luo
         print("label smooth on, numclasses:", num_classes)
 
     def loss_func(score, feat, target):

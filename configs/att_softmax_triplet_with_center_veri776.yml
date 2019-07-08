@@ -1,11 +1,10 @@
 MODEL:
   PRETRAIN_CHOICE: 'imagenet'
-  PRETRAIN_PATH: '/home/mengdechao/.cache/torch/checkpoints/resnet50-19c8e357.pth'
+  PRETRAIN_PATH: '/home/mengdechao/.cache/torch/checkpoints/resnet18-5c106cde.pth'
   METRIC_LOSS_TYPE: 'triplet_center'
   IF_LABELSMOOTH: 'on'
   IF_WITH_CENTER: 'yes'
-
-
+  NAME: 'resnet18'
 
 
 INPUT:

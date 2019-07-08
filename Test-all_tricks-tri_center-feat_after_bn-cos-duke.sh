@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Experiment all tricks without center loss without re-ranking: 256x128-bs16x4-warmup10-erase0_5-labelsmooth_on-laststride1-bnneck_on
 # Dataset 2: dukemtmc
 # imagesize: 256x128

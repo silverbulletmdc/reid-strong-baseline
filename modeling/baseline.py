@@ -7,6 +7,7 @@
 import torch
 from torch import nn
 
+from torchvision.models import resnet50
 from .backbones.resnet import ResNet, BasicBlock, Bottleneck
 from .backbones.senet import SENet, SEResNetBottleneck, SEBottleneck, SEResNeXtBottleneck
 
@@ -169,8 +170,8 @@ class Baseline(nn.Module):
                 return global_feat
 
     def load_param(self, trained_path):
-        param_dict = torch.load(trained_path)
-        print(param_dict.keys())
+        param_dict = torch.load(trained_path, map_location="cpu")
+        # print(param_dict.keys())
         for i in param_dict:
             if 'classifier' in i:
                 continue
