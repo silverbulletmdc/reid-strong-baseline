@@ -169,7 +169,7 @@ def main():
     with torch.no_grad():
         # 主循环
         # for loader in [train_loader, val_loader]:
-        for loader in [val_loader, ]:
+        for loader in [train_loader, val_loader]:
             for batch in tqdm(loader):
                 # 读取数据
                 data, pids, camids, paths = batch
