@@ -20,17 +20,19 @@ def make_data_loader(cfg, get_demo_dataset=False):
     :param get_demo_dataset: If true, return query and gallery dataloaders individually.
     :return:
     """
+
+    # prepare transform
     train_transforms = build_transforms(cfg, is_train=True)
     val_transforms = build_transforms(cfg, is_train=False)
-    num_workers = cfg.DATALOADER.NUM_WORKERS
-    if len(cfg.DATASETS.NAMES) == 1:
-        dataset = init_dataset(cfg.DATASETS.NAMES, root=cfg.DATASETS.ROOT_DIR)
-    else:
-        # TODO: add multi dataset to train
-        dataset = init_dataset(cfg.DATASETS.NAMES, root=cfg.DATASETS.ROOT_DIR)
+
+    # prepare reid meta dataset
+    dataset = init_dataset(cfg.DATASETS.NAMES, root=cfg.DATASETS.ROOT_DIR)
 
     num_classes = dataset.num_train_pids
     train_set = ImageDataset(dataset.train, train_transforms)
+    num_workers = cfg.DATALOADER.NUM_WORKERS
+
+
     if cfg.DATALOADER.SAMPLER == 'softmax':
         train_loader = DataLoader(
             train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, shuffle=True, num_workers=num_workers,
@@ -39,6 +41,7 @@ def make_data_loader(cfg, get_demo_dataset=False):
     else:
         # sim_mat = torch.load('exp/sim_mat.pth').numpy()
         sampler=RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE)
+
         train_loader = DataLoader(
             train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
             # sampler=SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat),
@@ -66,3 +69,7 @@ def make_data_loader(cfg, get_demo_dataset=False):
         return query_loader, gallery_loader, num_classes
 
     return train_loader, val_loader, len(dataset.query), num_classes
+
+
+
+

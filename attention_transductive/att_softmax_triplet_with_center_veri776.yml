@@ -59,9 +59,11 @@ SOLVER:
 TEST:
   IMS_PER_BATCH: 16
   RE_RANKING: 'no'
-  WEIGHT: "/data/att_veri776_train_output/resnet50_model_120.pth"
+  BIG_WEIGHT: "veri776_train_output/resnet50_model_120.pth"
+  SMALL_WEIGHT: "/data/att_veri776_train_output/resnet50_model_120.pth"
   NECK_FEAT: 'after'
   FEAT_NORM: 'yes'
+  LAMBDA: 0.5
 
 OUTPUT_DIR: "./train_output"
 

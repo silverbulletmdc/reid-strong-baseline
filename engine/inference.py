@@ -58,18 +58,22 @@ def inference(
     logger.info("Enter inferencing")
     if cfg.TEST.RE_RANKING == 'no':
         print("Create evaluator")
-        evaluator = create_supervised_evaluator(model, metrics={'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)},
+        evaluator = create_supervised_evaluator(model, metrics={
+            'r1_mAP': R1_mAP(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM, output_path=cfg.OUTPUT_DIR)},
                                                 device=device)
     elif cfg.TEST.RE_RANKING == 'yes':
         print("Create evaluator for reranking")
-        evaluator = create_supervised_evaluator(model, metrics={'r1_mAP': R1_mAP_reranking(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)},
+        evaluator = create_supervised_evaluator(model, metrics={
+            'r1_mAP': R1_mAP_reranking(num_query, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)},
                                                 device=device)
     else:
         print("Unsupported re_ranking config. Only support for no or yes, but got {}.".format(cfg.TEST.RE_RANKING))
+        return
 
     @evaluator.on(Events.ITERATION_COMPLETED)
     def update(evaluator):
-        print(evaluator.state.output)
+        # print(evaluator.state.output)
+        pass
 
     @evaluator.on(Events.EPOCH_COMPLETED)
     def calc_heatmap(engine):

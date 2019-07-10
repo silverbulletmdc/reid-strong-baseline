@@ -28,3 +28,4 @@ print(similarity_matrixs.shape)
 print(distance_matrix[0])
 print(distmat[0])
 print(dist[0])
+

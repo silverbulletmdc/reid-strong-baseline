@@ -5,6 +5,7 @@
 """
 
 import pickle
+import os
 import numpy as np
 import torch
 import torch.nn.functional
@@ -15,11 +16,12 @@ from .re_ranking import re_ranking
 
 
 class R1_mAP(Metric):
-    def __init__(self, num_query, max_rank=50, feat_norm='yes'):
+    def __init__(self, num_query, max_rank=50, feat_norm='yes', output_path = ''):
         super(R1_mAP, self).__init__()
         self.num_query = num_query
         self.max_rank = max_rank
         self.feat_norm = feat_norm
+        self.output_path = output_path
 
 
     def reset(self):
@@ -57,16 +59,19 @@ class R1_mAP(Metric):
         # 保存结果
         query_paths = self.paths[:self.num_query]
         gallery_paths = self.paths[self.num_query:]
-        with open('output.pkl', 'wb') as f:
-            pickle.dump({
-                'gallery_paths': gallery_paths,
-                'query_paths': query_paths,
-                'gallery_ids': g_pids,
-                'query_ids': q_pids,
-                'query_cams': q_camids,
-                'gallery_cams': g_camids,
-                'distmat': distmat
-            }, f)
+        if self.output_path != '':
+            with open(os.path.join(self.output_path, 'test_output.pkl'), 'wb') as f:
+                torch.save({
+                    'gallery_paths': gallery_paths,
+                    'query_paths': query_paths,
+                    'gallery_ids': g_pids,
+                    'query_ids': q_pids,
+                    'query_features': qf,
+                    'gallery_features': gf,
+                    'query_cams': q_camids,
+                    'gallery_cams': g_camids,
+                    'distmat': distmat
+                }, f)
 
         cmc, mAP = eval_func(distmat, q_pids, g_pids, q_camids, g_camids)
 
@@ -115,3 +120,5 @@ class R1_mAP_reranking(Metric):
         cmc, mAP = eval_func(distmat, q_pids, g_pids, q_camids, g_camids)
 
         return cmc, mAP
+
+

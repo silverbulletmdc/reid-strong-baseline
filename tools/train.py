@@ -128,6 +128,7 @@ def main():
     if args.config_file != "":
         cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    cfg.USE_GPU = cfg.MODEL.DEVICE == 'cuda'
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR

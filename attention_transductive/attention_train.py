@@ -1,6 +1,5 @@
 import sys
 
-
 sys.path.append('.')
 import os
 import torch
@@ -32,28 +31,33 @@ class AttentionTransductiveDataset(ImageDataset):
         super(AttentionTransductiveDataset, self).__init__(dataset, transform)
         self.heatmaps_path = heatmaps_path
 
-    def __iter__(self, index):
+    def __getitem__(self, index):
         img_path, pid, camid = self.dataset[index]
+
         if use_nori:
             img = read_nori_image(img_path)
         else:
             img = read_image(img_path)
 
-        basename = os.path.splitext(os.path.split(img_path)[-1])
-        heatmap_path = os.path.join(self.heatmaps_path, '{}.npy'.format(basename))
-        heatmap = np.load(heatmap_path)
-        reverse_heatmap = (255 - heatmap) / 255
-        sigmoid_reverse_heatmap = 1 / (1 + np.exp(-reverse_heatmap))
-        img = img * sigmoid_reverse_heatmap
+        sigmoid_reverse_heatmap = self.get_sigmoid_reverse_heatmap(img_path)
 
         if self.transform is not None:
-            img = self.transform(img)
+            img:torch.Tensor = self.transform(img)
+        img = img * img.new_tensor(sigmoid_reverse_heatmap)
 
         return img, pid, camid, img_path
 
+    def get_sigmoid_reverse_heatmap(self, img_path, temperature=100):
+        basename = os.path.splitext(os.path.split(img_path)[-1])[0]
+        heatmap_path = os.path.join(self.heatmaps_path, '{}.npy'.format(basename))
+        heatmap = np.load(heatmap_path)
+        reverse_heatmap = (255 - heatmap) / 255
+        sigmoid_reverse_heatmap = 1 / (1 + np.exp(-(reverse_heatmap - 0.5) * temperature))
+        return sigmoid_reverse_heatmap
+
 
 def make_data_loader(cfg):
-    train_transforms = build_transforms(cfg, is_train=True)
+    train_transforms = build_transforms(cfg, is_train=False)
     val_transforms = build_transforms(cfg, is_train=False)
     num_workers = cfg.DATALOADER.NUM_WORKERS
     if len(cfg.DATASETS.NAMES) == 1:
@@ -183,8 +187,12 @@ def train(cfg):
 if __name__ == "__main__":
     cfg = load_cfg()
     setup_device(cfg.MODEL.DEVICE, cfg.MODEL.DEVICE_ID)
+
+    # 创建输出文件夹
     output_dir = cfg.OUTPUT_DIR
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+
+    # 初始化logger
     logger = setup_logger("reid_baseline", output_dir, 0)
     train(cfg)

@@ -95,14 +95,14 @@ def make_naive_heatmap_dataloader(cfg):
 
     num_classes = dataset.num_train_pids
     train_set = ImageDataset(dataset.train, val_transforms)
-    val_set = ImageDataset(dataset.gallery, val_transforms)
+    val_set = ImageDataset(dataset.query + dataset.gallery, val_transforms)
     train_loader = DataLoader(
         train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, num_workers=num_workers, shuffle=False,
         collate_fn=val_collate_fn)
     val_loader = DataLoader(
         val_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, num_workers=num_workers, shuffle=False,
         collate_fn=val_collate_fn)
-    return train_loader, val_loader, num_classes
+    return train_loader, val_loader, len(dataset.query), num_classes
 
 
 def get_config():
@@ -155,7 +155,7 @@ def main():
     # 读取数据集
     train_loader: DataLoader
     val_loader: DataLoader
-    train_loader, val_loader, num_classes = make_naive_heatmap_dataloader(cfg)
+    train_loader, val_loader, query_len, num_classes = make_naive_heatmap_dataloader(cfg)
 
     # 读取模型
     model = build_model(cfg, num_classes)
@@ -170,6 +170,7 @@ def main():
         # 主循环
         # for loader in [train_loader, val_loader]:
         for loader in [val_loader, ]:
+            handled_samples = 0
             for batch in tqdm(loader):
                 # 读取数据
                 data, pids, camids, paths = batch
@@ -198,6 +199,9 @@ def main():
                     plt.imshow(rendered_heatmap)
                     save_path = os.path.join(rendered_path, '{}.jpg'.format(basename))
                     plt.savefig(save_path)
+                handled_samples += B
+                if handled_samples >= query_len:
+                    break
 
 
 if __name__ == '__main__':
