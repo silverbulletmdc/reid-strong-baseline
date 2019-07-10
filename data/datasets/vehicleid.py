@@ -1,11 +1,6 @@
-# encoding: utf-8
-"""
-@author:  sherlock
-@contact: sherlockliao01@gmail.com
-"""
-
 import glob
 import re
+import pickle
 
 import os.path as osp
 
@@ -17,9 +12,10 @@ except ImportError:
     use_nori = False
 
 from .bases import BaseImageDataset
+from utils.oss_tool import get_oss_client, load_from_oss
 
 
-class VehicleIDNori(BaseImageDataset):
+class VehicleID(BaseImageDataset):
     """
     Market1501
     Reference:
@@ -30,49 +26,39 @@ class VehicleIDNori(BaseImageDataset):
     # identities: 1501 (+1 for background)
     # images: 12936 (train) + 3368 (query) + 15913 (gallery)
     """
-    dataset_dir = 'VehicleID_V1.0'
+    dataset_dir = 'VehicleID'
 
-    def __init__(self, root="s3://lyd-share/crh_reid_data/reid/PKU_VehicleID/VehicleID_V1.0", verbose=True, **kwargs):
-        super(VehicleIDNori, self).__init__()
-        self.dataset_dir = "s3://lyd-share/crh_reid_data/reid/PKU_VehicleID/VehicleID_V1.0/train_test_split"
+    def __init__(self, root="s3://normal/veri776/", verbose=True, **kwargs):
+        super(VehicleID, self).__init__()
 
-        self.train_dir = osp.join(self.dataset_dir, 'train_data_view_keypoints.pkl')
-        self.query_dir = osp.join(self.dataset_dir, 'image_query.nori')
-        self.gallery_dir = osp.join(self.dataset_dir, 'image_test.nori')
+        bucket = 'lyd-share'
+        root_meta_path = "crh_reid_data/reid/PKU_VehicleID/VehicleID_V1.0/train_test_split/"
+        train_meta_name = "train_data_view_keypoints.pkl"
 
-        self.train, self.train_label2pid, self.train_pid2label = self._process_dir(self.train_dir, relabel=True)
-        self.query, self.query_label2pid, self.query_pid2label = self._process_dir(self.query_dir, relabel=False)
-        self.gallery, self.gallery_label2pid, self.gallery_pid2label = self._process_dir(self.gallery_dir, relabel=False)
+        train_meta_path = osp.join(root_meta_path, train_meta_name)
+        train_meta_dict = pickle.loads(load_from_oss(get_oss_client('hh-b'), bucket, train_meta_path))
+
+        self.train, self.train_label2pid, self.train_pid2label = self.process_meta(train_meta_dict, relabel=True)
 
         if verbose:
-            print("=> VeRi776 loaded")
+            print("=> VehicleID loaded")
             self.print_dataset_statistics(self.train, self.query, self.gallery)
 
         self.num_train_pids, self.num_train_imgs, self.num_train_cams = self.get_imagedata_info(self.train)
         self.num_query_pids, self.num_query_imgs, self.num_query_cams = self.get_imagedata_info(self.query)
         self.num_gallery_pids, self.num_gallery_imgs, self.num_gallery_cams = self.get_imagedata_info(self.gallery)
 
-    def _process_dir(self, dir_path, relabel=False):
-        nr = nori.open(dir_path, 'r')
-        img_paths = []
-        nids = []
-
-        for nid, _, meta in nr.scan(scan_data=False):
-            img_paths.append(meta['filename'])
-            nids.append(nid)
-        nr.close()
-
-        pattern = re.compile(r'([-\d]+)_c(\d+)')
-
-        pid_container = set()
-        for img_path in img_paths:
-            pid, _ = map(int, pattern.search(img_path).groups())
-            if pid == -1: continue  # junk images are just ignored
-            pid_container.add(pid)
-        pid2label = {pid: label for label, pid in enumerate(pid_container)}
-        label2pid = {label: pid for pid, label in pid2label.items()}
+    def load_pickle(self, raw_id_metas_dict: dict, relabel=False):
+        raw_ids = [raw_id for raw_id in raw_id_metas_dict.keys()]
+        id_container = set()
+        id2label = {id: label for label, id in enumerate(id_container)}
+        label2id = {label: id for id, label in id2label.items()}
 
         dataset = []
+        for id, raw_id in id2label.items():
+            metas = raw_id_metas_dict[raw_id]
+            for meta in metas:
+                dataset.append(meta['nori_id'], id, -1)
         for nid, img_path in zip(nids, img_paths):
             pid, camid = map(int, pattern.search(img_path).groups())
             if pid == -1: continue  # junk images are just ignored
@@ -82,6 +68,4 @@ class VehicleIDNori(BaseImageDataset):
             if relabel: pid = pid2label[pid]
             dataset.append((nid, pid, camid))
 
-        return dataset, label2pid, pid2label
-
-
+        return dataset, label2id, id2label
