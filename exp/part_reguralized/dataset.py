@@ -8,6 +8,12 @@ import json
 
 
 def veri776_adaptor(dataset, json_path):
+    """
+    将原工程使用的dataset(tuple(img_path, pid, cam_id))转化为新的格式，并增加nori信息
+    :param dataset:
+    :param json_path:
+    :return:
+    """
     with open(json_path, 'r') as f:
         box_json = json.load(f)
 
@@ -16,6 +22,11 @@ def veri776_adaptor(dataset, json_path):
     filename_noriid_dict = {}
     for nid, _, metas in nr.scan(scan_data=False):
         filename_noriid_dict[metas['filename']] = nid
+
+    output_dict = []
+    for box_meta in box_json:
+
+        box_meta['nori_id'] = filename_noriid_dict[box_meta['img_name']]
 
 
 class PartReguralizedDataset(ImageDataset):
@@ -56,8 +67,9 @@ class PartReguralizedDataset(ImageDataset):
         transform_shape = np.array(img.size)
 
         boxes = self.metas[index]['boxes']
+        boxes = transform_boxes(boxes, original_shape, transform_shape)
 
-        return img, pid, camid, img_path
+        return img, pid, camid, img_path, boxes
 
 
 def transform_boxes(boxes, original_shape, transform_shape):
@@ -65,7 +77,7 @@ def transform_boxes(boxes, original_shape, transform_shape):
     将原始boxes转化为降采样16倍后的ROI坐标
 
     :param boxes:
-    :return: window_box, left_light_box, right_light_box
+    :return: window_box, left_light_box, right_light_box, (N, 4). Stacked together for further extension.
     """
 
     window_boxes = [box[0] == 'window' for box in boxes]
@@ -116,4 +128,4 @@ def transform_boxes(boxes, original_shape, transform_shape):
     if left_light_box[0] > right_light_box[0]:
         left_light_box, right_light_box = right_light_box, left_light_box
 
-    return window_box, left_light_box, right_light_box
+    return np.stack(window_box, left_light_box, right_light_box)
