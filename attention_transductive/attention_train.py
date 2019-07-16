@@ -2,6 +2,7 @@ import sys
 
 sys.path.append('.')
 import os
+import argparse
 import torch
 import numpy as np
 from data.datasets.dataset_loader import ImageDataset, read_nori_image, read_image
@@ -15,8 +16,10 @@ from layers import make_loss, make_loss_with_center
 from modeling import Baseline, build_model
 from solver import make_optimizer, WarmupMultiStepLR, make_optimizer_with_center
 from tools.train import train
-from utils import setup_device, load_cfg
+from utils import setup_device
 from utils.logger import setup_logger
+
+from attention_transductive.config import cfg
 
 try:
     import nori2 as nori
@@ -26,10 +29,34 @@ except ImportError:
     use_nori = False
 
 
+def load_cfg():
+    parser = argparse.ArgumentParser(description="ReID Baseline small model")
+    parser.add_argument(
+        "--config_file", default="", help="path to config flie", type=str
+    )
+    parser.add_argument("opts", help="Modify config options using the command-line", default=None,
+                        nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+
+    # read file
+    if args.config_file != "":
+        cfg.merge_from_file(args.config_file)
+
+    # read command line
+    cfg.merge_from_list(args.opts)
+
+    # calc attr
+    cfg.USE_GPU = cfg.MODEL.DEVICE == 'cuda'
+
+    cfg.freeze()
+    return cfg
+
+
 class AttentionTransductiveDataset(ImageDataset):
-    def __init__(self, dataset, transform=None, heatmaps_path="/data/veri776_train_output/naive_heatmaps"):
+    def __init__(self, dataset, transform=None, heatmaps_path="/data/veri776_train_output/naive_heatmaps", erase_prob=1):
         super(AttentionTransductiveDataset, self).__init__(dataset, transform)
         self.heatmaps_path = heatmaps_path
+        self.erase_prob = erase_prob
 
     def __getitem__(self, index):
         img_path, pid, camid = self.dataset[index]
@@ -39,11 +66,12 @@ class AttentionTransductiveDataset(ImageDataset):
         else:
             img = read_image(img_path)
 
-        sigmoid_reverse_heatmap = self.get_sigmoid_reverse_heatmap(img_path)
-
         if self.transform is not None:
-            img:torch.Tensor = self.transform(img)
-        img = img * img.new_tensor(sigmoid_reverse_heatmap)
+            img: torch.Tensor = self.transform(img)
+
+        if np.random.rand() < self.erase_prob:
+            sigmoid_reverse_heatmap = self.get_sigmoid_reverse_heatmap(img_path)
+            img = img * img.new_tensor(sigmoid_reverse_heatmap)
 
         return img, pid, camid, img_path
 
@@ -67,24 +95,23 @@ def make_data_loader(cfg):
         dataset = init_dataset(cfg.DATASETS.NAMES, root=cfg.DATASETS.ROOT_DIR)
 
     num_classes = dataset.num_train_pids
-    train_set = AttentionTransductiveDataset(dataset.train, train_transforms)
+    train_set = AttentionTransductiveDataset(dataset.train, train_transforms, heatmaps_path=cfg.DATASETS.NAIVE_HEATMAP_DIR)
     if cfg.DATALOADER.SAMPLER == 'softmax':
-        train_loader = DataLoader(
-            train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, shuffle=True, num_workers=num_workers,
-            collate_fn=train_collate_fn
-        )
-    else:
-        # sim_mat = torch.load('exp/sim_mat.pth').numpy()
-        sampler = RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE)
-        train_loader = DataLoader(
-            train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
-            # sampler=SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat),
-            # sampler=RandomIdentitySampler_alignedreid(dataset.train, cfg.DATALOADER.NUM_INSTANCE),      # new add by gu
-            sampler=sampler,
-            num_workers=num_workers, collate_fn=train_collate_fn
-        )
+        sampler = None
 
-    val_set = AttentionTransductiveDataset(dataset.query + dataset.gallery, val_transforms)
+    elif cfg.DATALOADER.SAMPLER == 'hard':
+        sim_mat = torch.load('exp/sim_mat.pth').numpy()
+        sampler = SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat)
+    else:
+        sampler = RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE)
+
+    train_loader = DataLoader(
+        train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
+        sampler=sampler,
+        num_workers=num_workers, collate_fn=train_collate_fn
+    )
+
+    val_set = AttentionTransductiveDataset(dataset.query + dataset.gallery, val_transforms, heatmaps_path=cfg.DATASETS.NAIVE_HEATMAP_DIR)
     val_loader = DataLoader(
         val_set, batch_size=cfg.TEST.IMS_PER_BATCH, shuffle=False, num_workers=num_workers,
         collate_fn=val_collate_fn
@@ -114,7 +141,7 @@ def train(cfg):
             path_to_optimizer = cfg.MODEL.PRETRAIN_PATH.replace('model', 'optimizer')
             print('Path to the checkpoint of optimizer:', path_to_optimizer)
             model.load_state_dict(torch.load(cfg.MODEL.PRETRAIN_PATH))
-            optimizer.load_state_dict(torch.load(path_to_optimizer))
+            optimizer.load_state_dict(torch.load(path_to_optimizer, map_location=cfg.MODEL.DEVICE))
             scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
                                           cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD, start_epoch)
         elif cfg.MODEL.PRETRAIN_CHOICE == 'imagenet':
@@ -154,9 +181,21 @@ def train(cfg):
             print('Path to the checkpoint of optimizer:', path_to_optimizer)
             path_to_optimizer_center = cfg.MODEL.PRETRAIN_PATH.replace('model', 'optimizer_center')
             print('Path to the checkpoint of optimizer_center:', path_to_optimizer_center)
+            path_to_center_loss = cfg.MODEL.PRETRAIN_PATH.replace('model', 'centerloss')
             model.load_state_dict(torch.load(cfg.MODEL.PRETRAIN_PATH))
+            center_criterion.load_state_dict(torch.load(path_to_center_loss))
+
             optimizer.load_state_dict(torch.load(path_to_optimizer))
             optimizer_center.load_state_dict(torch.load(path_to_optimizer_center))
+
+            # pytorch的bug，需要把optimizer中的参数手工移动到gpu中
+            if cfg.USE_GPU:
+                for opt in [optimizer, optimizer_center]:
+                    for state in opt.state.values():
+                        for k, v in state.items():
+                            if isinstance(v, torch.Tensor):
+                                state[k] = v.cuda()
+
             scheduler = WarmupMultiStepLR(optimizer, cfg.SOLVER.STEPS, cfg.SOLVER.GAMMA, cfg.SOLVER.WARMUP_FACTOR,
                                           cfg.SOLVER.WARMUP_ITERS, cfg.SOLVER.WARMUP_METHOD, start_epoch)
         elif cfg.MODEL.PRETRAIN_CHOICE == 'imagenet':
@@ -185,6 +224,7 @@ def train(cfg):
 
 
 if __name__ == "__main__":
+    # 读取配置文件
     cfg = load_cfg()
     setup_device(cfg.MODEL.DEVICE, cfg.MODEL.DEVICE_ID)
 

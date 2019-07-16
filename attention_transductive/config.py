@@ -70,7 +70,8 @@ _C.DATASETS = CN()
 _C.DATASETS.NAMES = ('market1501')
 # Root directory where datasets should be used (and downloaded if not found)
 _C.DATASETS.ROOT_DIR = ('./datasets')
-
+_C.DATASETS.NAIVE_HEATMAP_DIR = ''
+_C.DATASETS.ERASE_PROB = 1.0
 # -----------------------------------------------------------------------------
 # DataLoader
 # -----------------------------------------------------------------------------

@@ -32,23 +32,20 @@ def make_data_loader(cfg, get_demo_dataset=False):
     train_set = ImageDataset(dataset.train, train_transforms)
     num_workers = cfg.DATALOADER.NUM_WORKERS
 
-
     if cfg.DATALOADER.SAMPLER == 'softmax':
-        train_loader = DataLoader(
-            train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, shuffle=True, num_workers=num_workers,
-            collate_fn=train_collate_fn
-        )
-    else:
-        # sim_mat = torch.load('exp/sim_mat.pth').numpy()
-        sampler=RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE)
+        sampler = None
 
-        train_loader = DataLoader(
-            train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
-            # sampler=SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat),
-            # sampler=RandomIdentitySampler_alignedreid(dataset.train, cfg.DATALOADER.NUM_INSTANCE),      # new add by gu
-            sampler=sampler,
-            num_workers=num_workers, collate_fn=train_collate_fn
-        )
+    elif cfg.DATALOADER.SAMPLER == 'hard':
+        sim_mat = torch.load('exp/sim_mat.pth').numpy()
+        sampler = SimilarIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE, sim_mat)
+    else:
+        sampler = RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE)
+
+    train_loader = DataLoader(
+        train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
+        sampler=sampler,
+        num_workers=num_workers, collate_fn=train_collate_fn
+    )
 
     val_set = ImageDataset(dataset.query + dataset.gallery, val_transforms)
     val_loader = DataLoader(

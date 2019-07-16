@@ -1,10 +1,11 @@
 MODEL:
+  DEVICE: 'cuda'
   PRETRAIN_CHOICE: 'imagenet'
-  PRETRAIN_PATH: '/home/mengdechao/.cache/torch/checkpoints/resnet50-19c8e357.pth'
+  PRETRAIN_PATH: '/home/mengdechao/.cache/torch/checkpoints/resnet18-5c106cde.pth'
   METRIC_LOSS_TYPE: 'triplet_center'
   IF_LABELSMOOTH: 'on'
   IF_WITH_CENTER: 'yes'
-  NAME: 'resnet50'
+  NAME: 'resnet18'
 
 
 INPUT:
@@ -17,7 +18,9 @@ INPUT:
 DATASETS:
   NAMES: ('veri776')
   ROOT_DIR: '/home/dechao/disk1/datasets/VeRi'
-  ERASE_PROB: 0.5
+  NAIVE_HEATMAP_DIR: '/data/reid-strong-baseline/resnet50_big_b64_1/naive_heatmaps'
+  ERASE_PROB: 1.0
+
 
 DATALOADER:
   SAMPLER: 'softmax_triplet'
@@ -59,9 +62,12 @@ SOLVER:
 TEST:
   IMS_PER_BATCH: 16
   RE_RANKING: 'no'
-  WEIGHT: "/data/att_veri776_train_output/resnet50_model_120.pth"
+  BIG_WEIGHT: "veri776_train_output/resnet50_model_120.pth"
+  SMALL_WEIGHT: "/data/reid-strong-baseline/att_resnet18/resnet18_model_120.pth"
   NECK_FEAT: 'after'
   FEAT_NORM: 'yes'
+  LAMBDA: 0.5
 
-OUTPUT_DIR: "./train_output"
+OUTPUT_DIR: "/data/reid-strong-baseline/att_resnet18"
+
 
