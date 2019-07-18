@@ -5,17 +5,7 @@ from data.datasets.dataset_loader import ImageDataset
 from utils.iotools import read_nori_image, read_image
 import nori2 as nori
 import json
-
-
-def veri776_adaptor(dataset, json_path):
-    with open(json_path, 'r') as f:
-        box_json = json.load(f)
-
-    s3_root = "s3://normal/veri776"
-    nr = nori.open(s3_root)
-    filename_noriid_dict = {}
-    for nid, _, metas in nr.scan(scan_data=False):
-        filename_noriid_dict[metas['filename']] = nid
+from pprint import pprint
 
 
 class PartReguralizedDataset(ImageDataset):
@@ -25,7 +15,7 @@ class PartReguralizedDataset(ImageDataset):
 
         :param metas: list[
                     dict{
-                        img_path: str,
+                        filename: str,
                         nori_id: str,
                         boxes: [(class, prob, xtl, ytl, xbr, ybr)]
                         cam_id: int,
@@ -34,19 +24,19 @@ class PartReguralizedDataset(ImageDataset):
         :param transform:
         """
         if use_nori:
-            base_meta = [(item['nori_id'], item['id'], item['camid']) for item in metas]
+            base_meta = [(item['nori_id'], item['id'], item['cam_id']) for item in metas]
         else:
-            base_meta = [(item['img_path'], item['id'], item['camid']) for item in metas]
+            base_meta = [(item['img_path'], item['id'], item['cam_id']) for item in metas]
         super(PartReguralizedDataset, self).__init__(base_meta, transform)
         self.metas = metas
         self.use_nori = use_nori
 
     def __getitem__(self, index):
-        img_path, pid, camid = self.dataset[index]
+        nori_id, pid, camid = self.dataset[index]
         if self.use_nori:
-            img = read_nori_image(img_path)
+            img = read_nori_image(nori_id)
         else:
-            img = read_image(img_path)
+            img = read_image(nori_id)
 
         original_shape = np.array(img.size)  # width, height
 
@@ -56,8 +46,15 @@ class PartReguralizedDataset(ImageDataset):
         transform_shape = np.array(img.size)
 
         boxes = self.metas[index]['boxes']
+        boxes = transform_boxes(boxes, original_shape, transform_shape)
 
-        return img, pid, camid, img_path
+        return {
+            "img": img,  # PIL.Image
+            "pid": pid,  # int
+            "camid": camid,  # int
+            "nori_id": nori_id,  # str
+            "boxes": boxes  # np.array [3,4] xtl,ytl,xrb, yrb
+        }
 
 
 def transform_boxes(boxes, original_shape, transform_shape):
@@ -65,11 +62,11 @@ def transform_boxes(boxes, original_shape, transform_shape):
     将原始boxes转化为降采样16倍后的ROI坐标
 
     :param boxes:
-    :return: window_box, left_light_box, right_light_box
+    :return: window_box, left_light_box, right_light_box, (N, 4). Stacked together for further extension.
     """
 
-    window_boxes = [box[0] == 'window' for box in boxes]
-    light_boxes = [box[0] == 'light' for box in boxes]
+    window_boxes = [box for box in boxes if box[0] == 'window']
+    light_boxes = [box for box in boxes if box[0] == 'light']
 
     # hard code平均框。该坐标是源代码中16*16特征图上的坐标，转化到目标坐标
     avg_window_box = np.array([0, 3, 15, 7]).reshape((2, 2)) / 16 * transform_shape / 16
@@ -81,7 +78,7 @@ def transform_boxes(boxes, original_shape, transform_shape):
         window_box = np.array(window_box).reshape((2, 2)) / original_shape * transform_shape / 16
 
     window_box[1, :] = np.ceil(window_box[1, :])
-    window_box[0, :] = np.round(window_box[1, :])
+    window_box[0, :] = np.round(window_box[0, :])
 
     if len(light_boxes) == 0:
         left_light_box = np.array([0, 11, 5, 16]).reshape((2, 2)) / 16 * transform_shape / 16
@@ -95,7 +92,7 @@ def transform_boxes(boxes, original_shape, transform_shape):
         left_light_box = light_box
         right_light_box = np.copy(light_box)
 
-    elif len(light_boxes) == 2:
+    elif len(light_boxes) >= 2:
         raw_left_box = light_boxes[0]
         raw_right_box = light_boxes[1]
         class_, prob, *left_box = raw_left_box
@@ -116,4 +113,11 @@ def transform_boxes(boxes, original_shape, transform_shape):
     if left_light_box[0] > right_light_box[0]:
         left_light_box, right_light_box = right_light_box, left_light_box
 
-    return window_box, left_light_box, right_light_box
+    return np.stack([window_box, left_light_box, right_light_box])
+
+
+def make_dataset():
+    with open('data/veri776_with_box.json', 'r') as f:
+        metas = json.load(f)
+    dataset = PartReguralizedDataset(metas["train"])
+    return dataset
