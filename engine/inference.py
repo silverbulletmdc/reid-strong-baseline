@@ -75,10 +75,6 @@ def inference(
         # print(evaluator.state.output)
         pass
 
-    @evaluator.on(Events.EPOCH_COMPLETED)
-    def calc_heatmap(engine):
-        pass
-
     evaluator.run(val_loader)
     cmc, mAP = evaluator.state.metrics['r1_mAP']
     logger.info('Validation Results')

@@ -1,5 +1,6 @@
 import json
 import os
+
 import nori2 as nori
 from data.datasets.veri776 import VeRi776Nori
 import pprint
@@ -52,17 +53,23 @@ def veri776_adaptor(dataset, window_json_path, light_json_path, s3_root="s3://no
 
                 # 把centerbox转化为coernerbox
                 center_box = np.array(box_meta['box'])
-                corner_box = np.zeros(4)
-                corner_box[0] = center_box[0] - center_box[2] / 2
-                corner_box[1] = center_box[1] - center_box[3] / 2
-                corner_box[2] = center_box[0] + center_box[2] / 2
-                corner_box[3] = center_box[1] + center_box[3] / 2
+                corner_box = center_to_corner(center_box)
 
                 nid_meta_dict[nori_id]['boxes'].append(
                     (box_meta['class'], box_meta['prob'], *corner_box)
                 )
                 nid_meta_dict[nori_id]['filename'] = filename
+
     return list(nid_meta_dict.values())
+
+
+def center_to_corner(center_box):
+    corner_box = np.zeros(4)
+    corner_box[0] = center_box[0] - center_box[2] / 2
+    corner_box[1] = center_box[1] - center_box[3] / 2
+    corner_box[2] = center_box[0] + center_box[2] / 2
+    corner_box[3] = center_box[1] + center_box[3] / 2
+    return corner_box
 
 
 if __name__ == '__main__':

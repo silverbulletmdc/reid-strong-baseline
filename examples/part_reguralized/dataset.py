@@ -3,7 +3,12 @@ import numpy as np
 import math
 from data.datasets.dataset_loader import ImageDataset
 from utils.iotools import read_nori_image, read_image
-import nori2 as nori
+
+try:
+    import nori2 as nori
+except ImportError:
+    pass
+
 import json
 from pprint import pprint
 
